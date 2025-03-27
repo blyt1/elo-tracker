@@ -11,10 +11,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Player-related functions
 export const getPlayers = async () => {
+  // Use the player_rankings view that includes TrueSkill ratings
   const { data, error } = await supabase
-    .from('players')
+    .from('player_rankings')
     .select('*')
-    .order('elo', { ascending: false });
+    .order('conservative_rating', { ascending: false });
   
   if (error) throw error;
   return data;
@@ -23,7 +24,11 @@ export const getPlayers = async () => {
 export const addPlayer = async (name) => {
   const { data, error } = await supabase
     .from('players')
-    .insert([{ name }])
+    .insert([{ 
+      name,
+      mu: 1000, // Default TrueSkill mean
+      sigma: 333.33 // Default TrueSkill standard deviation 
+    }])
     .select();
   
   if (error) throw error;
@@ -56,7 +61,18 @@ export const createTeam = async (matchId, teamName, score, isWinner) => {
   return data[0];
 };
 
-export const addPlayerToMatch = async (matchId, playerId, teamMatchId, eloBefore, eloAfter, eloChange) => {
+export const addPlayerToMatch = async (
+  matchId, 
+  playerId, 
+  teamMatchId, 
+  eloBefore, 
+  eloAfter, 
+  eloChange,
+  muBefore = null,
+  muAfter = null,
+  sigmaBefore = null,
+  sigmaAfter = null
+) => {
   const { data, error } = await supabase
     .from('player_matches')
     .insert([{ 
@@ -65,7 +81,11 @@ export const addPlayerToMatch = async (matchId, playerId, teamMatchId, eloBefore
       team_match_id: teamMatchId, 
       elo_before: eloBefore, 
       elo_after: eloAfter, 
-      elo_change: eloChange 
+      elo_change: eloChange,
+      mu_before: muBefore,
+      mu_after: muAfter,
+      sigma_before: sigmaBefore,
+      sigma_after: sigmaAfter
     }]);
   
   if (error) throw error;
@@ -113,7 +133,12 @@ export const getMatchHistory = async () => {
         name: record.player_name,
         eloBefore: record.elo_before,
         eloAfter: record.elo_after,
-        eloChange: record.elo_change
+        eloChange: record.elo_change,
+        // Add TrueSkill data if available
+        mu_before: record.mu_before,
+        mu_after: record.mu_after,
+        sigma_before: record.sigma_before,
+        sigma_after: record.sigma_after
       });
     }
   });

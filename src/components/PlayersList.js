@@ -1,10 +1,37 @@
 'use client';
 
+import { calculateConservativeRating } from '@/lib/trueskill';
+
 const PlayersList = ({ players, isLoading }) => {
-  const getEloColor = (elo) => {
-    if (elo >= 1200) return 'text-green-600';
-    if (elo >= 1000) return 'text-blue-600';
+  // Function to calculate and return the conservative rating
+  const getConservativeRating = (player) => {
+    if (player.mu !== undefined && player.sigma !== undefined) {
+      return Math.round(calculateConservativeRating(player.mu, player.sigma));
+    }
+    // Fall back to ELO if TrueSkill values aren't available
+    return player.elo;
+  };
+
+  // Function to get color based on rating
+  const getRatingColor = (rating) => {
+    if (rating >= 1200) return 'text-green-600';
+    if (rating >= 1000) return 'text-blue-600';
     return 'text-red-600';
+  };
+
+  // Function to get player uncertainty indicator
+  const getUncertaintyIndicator = (player) => {
+    if (player.sigma === undefined) return '';
+    
+    // Higher sigma means more uncertainty
+    if (player.sigma > 200) {
+      return '???'; // Very uncertain
+    } else if (player.sigma > 100) {
+      return '??'; // Somewhat uncertain
+    } else if (player.sigma > 50) {
+      return '?'; // A little uncertain
+    }
+    return ''; // Fairly certain
   };
 
   if (isLoading) {
@@ -33,6 +60,11 @@ const PlayersList = ({ players, isLoading }) => {
     );
   }
 
+  // Sort players by conservative rating
+  const sortedPlayers = [...players].sort((a, b) => 
+    getConservativeRating(b) - getConservativeRating(a)
+  );
+
   return (
     <div className="card">
       <h2>Player Rankings</h2>
@@ -42,23 +74,34 @@ const PlayersList = ({ players, isLoading }) => {
             <tr className="border-b">
               <th className="text-left py-2">Rank</th>
               <th className="text-left py-2">Name</th>
-              <th className="text-right py-2">ELO</th>
+              <th className="text-right py-2">Rating</th>
+              <th className="text-right py-2">μ</th>
+              <th className="text-right py-2">σ</th>
               <th className="text-right py-2">W/L</th>
               <th className="text-right py-2">Win Rate</th>
             </tr>
           </thead>
           <tbody>
-            {players.map((player, index) => {
+            {sortedPlayers.map((player, index) => {
               const winRate = player.games_played > 0 
                 ? Math.round((player.wins / player.games_played) * 100)
                 : 0;
+              
+              const rating = getConservativeRating(player);
+              const uncertainty = getUncertaintyIndicator(player);
                 
               return (
                 <tr key={player.id} className="border-b hover:bg-gray-50">
                   <td className="py-2">{index + 1}</td>
                   <td className="py-2">{player.name}</td>
-                  <td className={`py-2 text-right font-medium ${getEloColor(player.elo)}`}>
-                    {player.elo}
+                  <td className={`py-2 text-right font-medium ${getRatingColor(rating)}`}>
+                    {rating} {uncertainty && <span className="text-gray-500">{uncertainty}</span>}
+                  </td>
+                  <td className="py-2 text-right text-gray-600">
+                    {player.mu !== undefined ? Math.round(player.mu) : '-'}
+                  </td>
+                  <td className="py-2 text-right text-gray-600">
+                    {player.sigma !== undefined ? Math.round(player.sigma) : '-'}
                   </td>
                   <td className="py-2 text-right">
                     {player.wins}-{player.losses}
@@ -71,6 +114,12 @@ const PlayersList = ({ players, isLoading }) => {
             })}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 text-sm text-gray-500">
+        <p>Rating = μ - 3σ (conservative estimate of skill)</p>
+        <p>μ (mu) = Estimated skill level</p>
+        <p>σ (sigma) = Uncertainty in the skill estimate</p>
+        <p>? = Moderate uncertainty, ?? = High uncertainty, ??? = Very high uncertainty</p>
       </div>
     </div>
   );

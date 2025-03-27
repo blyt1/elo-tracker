@@ -7,7 +7,7 @@ import {
   createTeam, 
   addPlayerToMatch 
 } from '@/lib/supabase';
-import { calculateTeamElo } from '@/lib/elo';
+import { calculateTeamTrueSkill } from '@/lib/trueskill';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
@@ -95,8 +95,8 @@ const MatchForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Calculate ELO changes
-      const eloResults = calculateTeamElo(
+      // Calculate TrueSkill changes
+      const trueskillResults = calculateTeamTrueSkill(
         team1Players, 
         team2Players,
         team1Score,
@@ -111,37 +111,49 @@ const MatchForm = () => {
         match.id, 
         team1Name, 
         team1Score, 
-        eloResults.team1Won
+        trueskillResults.team1Won
       );
 
       const team2Record = await createTeam(
         match.id, 
         team2Name, 
         team2Score, 
-        eloResults.team2Won
+        trueskillResults.team2Won
       );
 
       // Add player records for team 1
-      for (const player of eloResults.team1) {
+      for (const player of trueskillResults.team1) {
         await addPlayerToMatch(
           match.id,
           player.id,
           team1Record.id,
-          player.eloBefore,
-          player.eloAfter,
-          player.eloChange
+          // For backward compatibility, still update elo fields
+          Math.round(player.conservativeRatingBefore),
+          Math.round(player.conservativeRatingAfter),
+          Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore),
+          // New TrueSkill fields
+          player.muBefore,
+          player.muAfter,
+          player.sigmaBefore,
+          player.sigmaAfter
         );
       }
 
       // Add player records for team 2
-      for (const player of eloResults.team2) {
+      for (const player of trueskillResults.team2) {
         await addPlayerToMatch(
           match.id,
           player.id,
           team2Record.id,
-          player.eloBefore,
-          player.eloAfter,
-          player.eloChange
+          // For backward compatibility, still update elo fields
+          Math.round(player.conservativeRatingBefore),
+          Math.round(player.conservativeRatingAfter),
+          Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore),
+          // New TrueSkill fields
+          player.muBefore,
+          player.muAfter,
+          player.sigmaBefore,
+          player.sigmaAfter
         );
       }
 
@@ -162,6 +174,16 @@ const MatchForm = () => {
     !team1Players.some(p => p.id === player.id) && 
     !team2Players.some(p => p.id === player.id)
   );
+
+  // Function to display player rating (either TrueSkill or fallback to ELO)
+  const displayRating = (player) => {
+    if (player.mu !== undefined && player.sigma !== undefined) {
+      // Calculate conservative rating (μ - 3σ)
+      return Math.round(player.mu - 3 * player.sigma);
+    }
+    // Fall back to ELO if TrueSkill values aren't available
+    return player.elo;
+  };
 
   return (
     <div className="card">
@@ -203,7 +225,7 @@ const MatchForm = () => {
               <div className="space-y-2">
                 {team1Players.map(player => (
                   <div key={player.id} className="flex justify-between items-center p-2 bg-gray-100 rounded">
-                    <span>{player.name} ({player.elo})</span>
+                    <span>{player.name} ({displayRating(player)})</span>
                     <button
                       type="button"
                       className="text-red-600"
@@ -255,7 +277,7 @@ const MatchForm = () => {
               <div className="space-y-2">
                 {team2Players.map(player => (
                   <div key={player.id} className="flex justify-between items-center p-2 bg-gray-100 rounded">
-                    <span>{player.name} ({player.elo})</span>
+                    <span>{player.name} ({displayRating(player)})</span>
                     <button
                       type="button"
                       className="text-red-600"
@@ -289,7 +311,7 @@ const MatchForm = () => {
               {availablePlayers.map(player => (
                 <div key={player.id} className="border rounded p-3 flex justify-between items-center">
                   <span>
-                    {player.name} ({player.elo})
+                    {player.name} ({displayRating(player)})
                   </span>
                   <div className="space-x-2">
                     <button

@@ -72,6 +72,9 @@ function w(x, mean, variance) {
  * @param {number} team2Score - Score for team 2
  * @returns {Object} Object containing updated TrueSkill values for all players
  */
+// In src/lib/trueskill.js
+// Modify the calculateTeamTrueSkill function to amplify the impact of small score differences
+
 export function calculateTeamTrueSkill(team1, team2, team1Score, team2Score) {
   // Determine outcome (1 for team1 win, 0 for team2 win, 0.5 for draw)
   let outcome;
@@ -82,6 +85,18 @@ export function calculateTeamTrueSkill(team1, team2, team1Score, team2Score) {
   } else {
     outcome = 0.5;
   }
+
+  // Calculate the non-linear score impact factor
+  // We use a logarithmic scale to amplify small differences
+  const scoreDifference = Math.abs(team1Score - team2Score);
+  const smallDifference = 5; // Threshold for "small" differences
+  
+  // For very small differences (1-5 points), we amplify significantly
+  // For larger differences, we taper off the effect
+  // The multplier can be changed to adjust the impact
+  const scoreAdjustmentFactor = scoreDifference <= smallDifference 
+    ? 1.0 + (smallDifference - scoreDifference + 1) * 0.15 // Up to 1.75x for 1-point difference 
+    : 1.0;
 
   // Calculate team rating means and variances
   const team1Mu = team1.reduce((sum, player) => sum + (player.mu || DEFAULT_MU), 0);
@@ -108,15 +123,16 @@ export function calculateTeamTrueSkill(team1, team2, team1Score, team2Score) {
     cumulativeNormal(DEFAULT_DRAW_PROBABILITY / 2) * Math.sqrt(varianceSum) : 0;
 
   // Calculate the performance update for each team
+  // Apply the score adjustment factor to amplify the effect
   const team1Performance = outcome === 0.5 ? 
     team1Mu : 
     team1Mu + (outcome === 1 ? 1 : -1) * team1Sigma * 
-      v((outcome === 1 ? 1 : -1) * (meanDelta - drawMargin) / Math.sqrt(varianceSum), 0, 1);
+      v((outcome === 1 ? 1 : -1) * (meanDelta - drawMargin) / Math.sqrt(varianceSum), 0, 1) * scoreAdjustmentFactor;
   
   const team2Performance = outcome === 0.5 ? 
     team2Mu : 
     team2Mu + (outcome === 0 ? 1 : -1) * team2Sigma * 
-      v((outcome === 0 ? 1 : -1) * (meanDelta - drawMargin) / Math.sqrt(varianceSum), 0, 1);
+      v((outcome === 0 ? 1 : -1) * (meanDelta - drawMargin) / Math.sqrt(varianceSum), 0, 1) * scoreAdjustmentFactor;
 
   // Calculate the amount each player's rating should be updated
   // based on their relative contribution to the team

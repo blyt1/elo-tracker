@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  getPlayers, 
-  createMatch, 
-  createTeam, 
-  addPlayerToMatch 
+import {
+  getPlayers,
+  createMatch,
+  createTeam,
+  addPlayerToMatch
 } from '@/lib/supabase';
 import { calculateTeamTrueSkill } from '@/lib/trueskill';
 import toast from 'react-hot-toast';
@@ -16,12 +16,12 @@ const MatchForm = () => {
   const [players, setPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Team 1 state
   const [team1Name, setTeam1Name] = useState('Team A');
   const [team1Score, setTeam1Score] = useState(0);
   const [team1Players, setTeam1Players] = useState([]);
-  
+
   // Team 2 state
   const [team2Name, setTeam2Name] = useState('Team B');
   const [team2Score, setTeam2Score] = useState(0);
@@ -97,7 +97,7 @@ const MatchForm = () => {
     try {
       // Calculate TrueSkill changes
       const trueskillResults = calculateTeamTrueSkill(
-        team1Players, 
+        team1Players,
         team2Players,
         team1Score,
         team2Score
@@ -108,21 +108,34 @@ const MatchForm = () => {
 
       // Create team records
       const team1Record = await createTeam(
-        match.id, 
-        team1Name, 
-        team1Score, 
+        match.id,
+        team1Name,
+        team1Score,
         trueskillResults.team1Won
       );
 
       const team2Record = await createTeam(
-        match.id, 
-        team2Name, 
-        team2Score, 
+        match.id,
+        team2Name,
+        team2Score,
         trueskillResults.team2Won
       );
+      // In src/components/MatchForm.js
+      // Modify the part where player match records are added
 
       // Add player records for team 1
       for (const player of trueskillResults.team1) {
+        // Calculate the raw rating change
+        const ratingChange = Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore);
+
+        // Ensure winners always get positive changes and losers always get negative
+        // This aligns with how the database trigger determines wins/losses
+        const adjustedEloChange = trueskillResults.team1Won
+          ? Math.abs(ratingChange) // Winner gets positive change
+          : trueskillResults.isDraw
+            ? ratingChange // Draw keeps original change
+            : -Math.abs(ratingChange); // Loser gets negative change
+
         await addPlayerToMatch(
           match.id,
           player.id,
@@ -130,7 +143,7 @@ const MatchForm = () => {
           // For backward compatibility, still update elo fields
           Math.round(player.conservativeRatingBefore),
           Math.round(player.conservativeRatingAfter),
-          Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore),
+          adjustedEloChange, // Use adjusted change
           // New TrueSkill fields
           player.muBefore,
           player.muAfter,
@@ -141,6 +154,16 @@ const MatchForm = () => {
 
       // Add player records for team 2
       for (const player of trueskillResults.team2) {
+        // Calculate the raw rating change
+        const ratingChange = Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore);
+
+        // Ensure winners always get positive changes and losers always get negative
+        const adjustedEloChange = trueskillResults.team2Won
+          ? Math.abs(ratingChange) // Winner gets positive change
+          : trueskillResults.isDraw
+            ? ratingChange // Draw keeps original change
+            : -Math.abs(ratingChange); // Loser gets negative change
+
         await addPlayerToMatch(
           match.id,
           player.id,
@@ -148,7 +171,7 @@ const MatchForm = () => {
           // For backward compatibility, still update elo fields
           Math.round(player.conservativeRatingBefore),
           Math.round(player.conservativeRatingAfter),
-          Math.round(player.conservativeRatingAfter - player.conservativeRatingBefore),
+          adjustedEloChange, // Use adjusted change
           // New TrueSkill fields
           player.muBefore,
           player.muAfter,
@@ -158,7 +181,7 @@ const MatchForm = () => {
       }
 
       toast.success('Match recorded successfully!');
-      
+
       // Redirect to history page
       router.push('/history');
     } catch (error) {
@@ -170,8 +193,8 @@ const MatchForm = () => {
   };
 
   // Available players (not in any team)
-  const availablePlayers = players.filter(player => 
-    !team1Players.some(p => p.id === player.id) && 
+  const availablePlayers = players.filter(player =>
+    !team1Players.some(p => p.id === player.id) &&
     !team2Players.some(p => p.id === player.id)
   );
 
@@ -188,13 +211,13 @@ const MatchForm = () => {
   return (
     <div className="card">
       <h2>Record New Match</h2>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Team 1 */}
           <div className="border rounded p-4">
             <h3 className="text-lg font-medium mb-3">Team 1</h3>
-            
+
             <div className="mb-4">
               <label htmlFor="team1Name" className="label">Team Name</label>
               <input
@@ -206,7 +229,7 @@ const MatchForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="team1Score" className="label">Score</label>
               <input
@@ -219,7 +242,7 @@ const MatchForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="label">Team Players</label>
               <div className="space-y-2">
@@ -235,18 +258,18 @@ const MatchForm = () => {
                     </button>
                   </div>
                 ))}
-                
+
                 {team1Players.length === 0 && (
                   <div className="text-gray-500 text-sm italic">No players selected</div>
                 )}
               </div>
             </div>
           </div>
-          
+
           {/* Team 2 */}
           <div className="border rounded p-4">
             <h3 className="text-lg font-medium mb-3">Team 2</h3>
-            
+
             <div className="mb-4">
               <label htmlFor="team2Name" className="label">Team Name</label>
               <input
@@ -258,7 +281,7 @@ const MatchForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="team2Score" className="label">Score</label>
               <input
@@ -271,7 +294,7 @@ const MatchForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="label">Team Players</label>
               <div className="space-y-2">
@@ -287,7 +310,7 @@ const MatchForm = () => {
                     </button>
                   </div>
                 ))}
-                
+
                 {team2Players.length === 0 && (
                   <div className="text-gray-500 text-sm italic">No players selected</div>
                 )}
@@ -295,11 +318,11 @@ const MatchForm = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Available Players */}
         <div className="mb-6">
           <h3 className="text-lg font-medium mb-3">Available Players</h3>
-          
+
           {isLoading ? (
             <div className="animate-pulse space-y-2">
               {[...Array(5)].map((_, i) => (
@@ -331,7 +354,7 @@ const MatchForm = () => {
                   </div>
                 </div>
               ))}
-              
+
               {availablePlayers.length === 0 && (
                 <div className="text-gray-500 text-sm italic col-span-full">
                   No more available players
@@ -340,7 +363,7 @@ const MatchForm = () => {
             </div>
           )}
         </div>
-        
+
         {/* Submit Button */}
         <div className="flex justify-end">
           <button

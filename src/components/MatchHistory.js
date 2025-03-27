@@ -106,98 +106,133 @@ const MatchHistory = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-600 border-b pb-1 mb-1">
-                      Players {showTrueSkill && <span className="text-xs">(TrueSkill)</span>}
-                    </div>
-                    {team.players.map((player) => (
-                      <div key={player.id} className="flex flex-col md:flex-row md:justify-between md:items-center">
-                        <span>{player.name}</span>
-                        
-                        {showTrueSkill && player.mu_before !== undefined ? (
-                          <div className="flex flex-col md:flex-row md:items-center mt-1 md:mt-0">
-                            <div className="text-sm space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600 mr-2">μ:</span>
-                                <span>
-                                  {Math.round(player.mu_before)} → {Math.round(player.mu_after)}
-                                  <span 
-                                    className={`ml-1 ${
+                  {showTrueSkill && team.players[0]?.mu_before !== undefined ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="py-2 px-3 text-left">Player</th>
+                            <th className="py-2 px-3 text-center">μ</th>
+                            <th className="py-2 px-3 text-center">σ</th>
+                            <th className="py-2 px-3 text-center">Rating</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {team.players.map((player) => {
+                            const conservativeBefore = Math.round(player.mu_before - 3 * player.sigma_before);
+                            const conservativeAfter = Math.round(player.mu_after - 3 * player.sigma_after);
+                            const conservativeChange = conservativeAfter - conservativeBefore;
+                            
+                            // Determine if the change is aligned with team result
+                            const isAligned = (team.isWinner && conservativeChange > 0) || 
+                                            (!team.isWinner && conservativeChange < 0) ||
+                                            (conservativeChange === 0);
+                            
+                            return (
+                              <tr key={player.id} className="border-b hover:bg-gray-50">
+                                <td className="py-2 px-3 font-medium">{player.name}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <div className="flex flex-col items-center">
+                                    <div>{Math.round(player.mu_before)} → {Math.round(player.mu_after)}</div>
+                                    <div className={`text-xs font-medium ${
                                       player.mu_after > player.mu_before 
                                         ? 'text-green-600' 
                                         : player.mu_after < player.mu_before 
                                           ? 'text-red-600' 
                                           : ''
-                                    }`}
-                                  >
-                                    {player.mu_after > player.mu_before ? '+' : ''}
-                                    {Math.round(player.mu_after - player.mu_before)}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600 mr-2">σ:</span>
-                                <span>
-                                  {Math.round(player.sigma_before)} → {Math.round(player.sigma_after)}
-                                  <span 
-                                    className={`ml-1 ${
+                                    }`}>
+                                      {player.mu_after > player.mu_before ? '+' : ''}
+                                      {Math.round(player.mu_after - player.mu_before)}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <div className="flex flex-col items-center">
+                                    <div>{Math.round(player.sigma_before)} → {Math.round(player.sigma_after)}</div>
+                                    <div className={`text-xs font-medium ${
                                       player.sigma_after < player.sigma_before 
                                         ? 'text-green-600' 
                                         : player.sigma_after > player.sigma_before 
                                           ? 'text-red-600' 
                                           : ''
-                                    }`}
-                                  >
-                                    {player.sigma_after < player.sigma_before ? '' : '+'}
-                                    {Math.round(player.sigma_after - player.sigma_before)}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600 mr-2">Rating:</span>
-                                <span>
-                                  {Math.round(player.mu_before - 3 * player.sigma_before)} → {Math.round(player.mu_after - 3 * player.sigma_after)}
-                                  <span 
-                                    className={`ml-1 font-medium ${
-                                      (player.mu_after - 3 * player.sigma_after) > (player.mu_before - 3 * player.sigma_before) 
+                                    }`}>
+                                      {player.sigma_after < player.sigma_before ? '' : '+'}
+                                      {Math.round(player.sigma_after - player.sigma_before)}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <div className="flex flex-col items-center">
+                                    <div>{conservativeBefore} → {conservativeAfter}</div>
+                                    <div className={`text-xs font-medium ${
+                                      conservativeChange > 0 
                                         ? 'text-green-600' 
-                                        : (player.mu_after - 3 * player.sigma_after) < (player.mu_before - 3 * player.sigma_before)
+                                        : conservativeChange < 0
                                           ? 'text-red-600' 
                                           : ''
-                                    }`}
-                                  >
-                                    {(player.mu_after - 3 * player.sigma_after) > (player.mu_before - 3 * player.sigma_before) ? '+' : ''}
-                                    {Math.round((player.mu_after - 3 * player.sigma_after) - (player.mu_before - 3 * player.sigma_before))}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <span className="mr-2">
-                              {player.eloBefore} → {player.eloAfter}
-                            </span>
-                            <span 
-                              className={`font-medium ${
-                                player.eloChange > 0 
-                                  ? 'text-green-600' 
-                                  : player.eloChange < 0 
-                                    ? 'text-red-600' 
-                                    : ''
-                              }`}
-                            >
-                              {player.eloChange > 0 ? '+' : ''}
-                              {player.eloChange}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                                    }`}>
+                                      {conservativeChange > 0 ? '+' : ''}
+                                      {conservativeChange}
+                                      {!isAligned && (
+                                        <span 
+                                          className="ml-1 text-amber-600" 
+                                          title="Rating changed contrary to match result due to uncertainty reduction"
+                                        >
+                                          *
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="py-2 px-3 text-left">Player</th>
+                            <th className="py-2 px-3 text-center">ELO Rating</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {team.players.map((player) => (
+                            <tr key={player.id} className="border-b hover:bg-gray-50">
+                              <td className="py-2 px-3 font-medium">{player.name}</td>
+                              <td className="py-2 px-3 text-center">
+                                <div className="flex flex-col items-center">
+                                  <div>{player.eloBefore} → {player.eloAfter}</div>
+                                  <div className={`text-xs font-medium ${
+                                    player.eloChange > 0 
+                                      ? 'text-green-600' 
+                                      : player.eloChange < 0 
+                                        ? 'text-red-600' 
+                                        : ''
+                                  }`}>
+                                    {player.eloChange > 0 ? '+' : ''}
+                                    {player.eloChange}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            {/* Add an explanation for anomalous rating changes */}
+            {showTrueSkill && (
+              <div className="mt-3 text-xs text-gray-500 italic">
+                * Rating may increase despite a loss (or decrease despite a win) when the reduction in uncertainty (σ) outweighs the change in skill estimate (μ).
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -32,26 +32,74 @@ const AddPlayerForm = ({ onPlayerAdded }) => {
   };
 
   return (
-    <div className="card">
-      <h2>Add New Player</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="playerName" className="label">
+    <div style={{ 
+      backgroundColor: 'white', 
+      borderRadius: '0.5rem', 
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', 
+      overflow: 'hidden',
+      border: '1px solid #dbeafe'
+    }}>
+      <div style={{ 
+        backgroundColor: '#2563eb', 
+        padding: '1rem' 
+      }}>
+        <h2 style={{ 
+          color: 'white', 
+          fontWeight: 'bold', 
+          fontSize: '1.25rem' 
+        }}>Add New Player</h2>
+        <p style={{ 
+          color: '#bfdbfe', 
+          fontSize: '0.875rem', 
+          marginTop: '0.25rem' 
+        }}>Create a new player profile</p>
+      </div>
+      
+      <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
+          <label 
+            htmlFor="playerName" 
+            style={{ 
+              display: 'block', 
+              fontSize: '0.875rem', 
+              fontWeight: '500', 
+              color: '#374151',
+              marginBottom: '0.25rem'
+            }}
+          >
             Player Name
           </label>
-          <input
-            id="playerName"
-            type="text"
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter player name"
-            disabled={isSubmitting}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              id="playerName"
+              type="text"
+              style={{ 
+                width: '100%', 
+                padding: '0.5rem 1rem', 
+                border: '1px solid #d1d5db', 
+                borderRadius: '0.375rem',
+                outline: 'none'
+              }}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter player name"
+              disabled={isSubmitting}
+            />
+          </div>
         </div>
+        
         <button
           type="submit"
-          className="btn btn-primary"
+          style={{ 
+            width: '100%', 
+            padding: '0.5rem 1rem', 
+            borderRadius: '0.375rem', 
+            fontWeight: '500', 
+            color: 'white',
+            backgroundColor: isSubmitting ? '#60a5fa' : '#2563eb',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            border: 'none'
+          }}
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Adding...' : 'Add Player'}

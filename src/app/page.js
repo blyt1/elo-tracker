@@ -32,14 +32,27 @@ export default function PlayersPage() {
   };
 
   return (
-    <div>
-      <h1>Players</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <AddPlayerForm onPlayerAdded={handlePlayerAdded} />
-        </div>
-        <div className="md:col-span-2">
-          <PlayersList players={players} isLoading={isLoading} />
+    <div style={{ minHeight: '100%' }}>
+      {/* Content Container */}
+      <div>
+        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr', 
+            gap: '2rem',
+            '@media (min-width: 768px)': {
+              gridTemplateColumns: '1fr 2fr'
+            }
+          }}>
+            <div className="md:col-span-1">
+              <div>
+                <AddPlayerForm onPlayerAdded={handlePlayerAdded} />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <PlayersList players={players} isLoading={isLoading} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
 import { calculateTeamTrueSkill } from '@/lib/trueskill';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import EnhancedDropdown from '@/components/EnhancedDropdown';
 
 const MatchForm = () => {
   const router = useRouter();
@@ -45,18 +46,19 @@ const MatchForm = () => {
   }, []);
 
   // Handle adding player to team
-  const handleAddPlayerToTeam = (playerId, team) => {
-    const player = players.find(p => p.id === playerId);
+  const handleAddPlayerToTeam = (player, team) => {
     if (!player) return;
 
     if (team === 1) {
-      if (team1Players.some(p => p.id === playerId)) {
-        return; // Player already in team
+      if (team1Players.some(p => p.id === player.id)) {
+        toast.error(`${player.name} is already in Team 1`);
+        return;
       }
       setTeam1Players([...team1Players, player]);
     } else {
-      if (team2Players.some(p => p.id === playerId)) {
-        return; // Player already in team
+      if (team2Players.some(p => p.id === player.id)) {
+        toast.error(`${player.name} is already in Team 2`);
+        return;
       }
       setTeam2Players([...team2Players, player]);
     }
@@ -120,8 +122,6 @@ const MatchForm = () => {
         team2Score,
         trueskillResults.team2Won
       );
-      // In src/components/MatchForm.js
-      // Modify the part where player match records are added
 
       // Add player records for team 1
       for (const player of trueskillResults.team1) {
@@ -208,6 +208,14 @@ const MatchForm = () => {
     return player.elo;
   };
 
+  // Render player option with rating
+  const renderPlayerOption = (player) => (
+    <div className="flex justify-between items-center w-full">
+      <span>{player.name}</span>
+      <span className="font-medium text-blue-600">({displayRating(player)})</span>
+    </div>
+  );
+
   return (
     <div className="card">
       <h2>Record New Match</h2>
@@ -244,6 +252,21 @@ const MatchForm = () => {
             </div>
 
             <div className="mb-4">
+              <label className="label">Add Player</label>
+              <div className="flex space-x-2">
+                <div className="flex-grow">
+                  <EnhancedDropdown
+                    options={availablePlayers}
+                    onSelect={(player) => handleAddPlayerToTeam(player, 1)}
+                    placeholder="Search and select a player"
+                    disabled={isLoading || availablePlayers.length === 0}
+                    renderOption={renderPlayerOption}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
               <label className="label">Team Players</label>
               <div className="space-y-2">
                 {team1Players.map(player => (
@@ -251,7 +274,7 @@ const MatchForm = () => {
                     <span>{player.name} ({displayRating(player)})</span>
                     <button
                       type="button"
-                      className="text-red-600"
+                      className="text-red-600 hover:text-red-800"
                       onClick={() => handleRemovePlayerFromTeam(player.id, 1)}
                     >
                       Remove
@@ -296,6 +319,21 @@ const MatchForm = () => {
             </div>
 
             <div className="mb-4">
+              <label className="label">Add Player</label>
+              <div className="flex space-x-2">
+                <div className="flex-grow">
+                  <EnhancedDropdown
+                    options={availablePlayers}
+                    onSelect={(player) => handleAddPlayerToTeam(player, 2)}
+                    placeholder="Search and select a player"
+                    disabled={isLoading || availablePlayers.length === 0}
+                    renderOption={renderPlayerOption}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
               <label className="label">Team Players</label>
               <div className="space-y-2">
                 {team2Players.map(player => (
@@ -303,7 +341,7 @@ const MatchForm = () => {
                     <span>{player.name} ({displayRating(player)})</span>
                     <button
                       type="button"
-                      className="text-red-600"
+                      className="text-red-600 hover:text-red-800"
                       onClick={() => handleRemovePlayerFromTeam(player.id, 2)}
                     >
                       Remove
@@ -319,50 +357,7 @@ const MatchForm = () => {
           </div>
         </div>
 
-        {/* Available Players */}
-        <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3">Available Players</h3>
-
-          {isLoading ? (
-            <div className="animate-pulse space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-10 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {availablePlayers.map(player => (
-                <div key={player.id} className="border rounded p-3 flex justify-between items-center">
-                  <span>
-                    {player.name} ({displayRating(player)})
-                  </span>
-                  <div className="space-x-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => handleAddPlayerToTeam(player.id, 1)}
-                    >
-                      Team 1
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => handleAddPlayerToTeam(player.id, 2)}
-                    >
-                      Team 2
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {availablePlayers.length === 0 && (
-                <div className="text-gray-500 text-sm italic col-span-full">
-                  No more available players
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Available Players - Removed in favor of dropdown interface */}
 
         {/* Submit Button */}
         <div className="flex justify-end">
